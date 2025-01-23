@@ -24,7 +24,7 @@ def start_server(host, port):
             while file_data:
                 conn.send(file_data)
                 file_data = file.read(1024)
-        print("File transmitted successfully.")
+        print("The File has been transmitted successfully.")
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
