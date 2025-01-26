@@ -1,6 +1,7 @@
 import socket
 import argparse
 import os
+import struct  # For packing file size into bytes
 
 def start_server(host, port):
     s = socket.socket()
@@ -12,28 +13,27 @@ def start_server(host, port):
     conn, addr = s.accept()
     print(f"Connection established with {addr}")
 
-    # Step 1: Prompt the user for filenames
     while True:
         filenames = input("Enter filenames to send (separated by commas): ").strip()
         filenames_list = [filename.strip() for filename in filenames.split(",")]
 
-        # Check if all files exist
         missing_files = [file for file in filenames_list if not os.path.isfile(file)]
         if missing_files:
             print(f"Error: The following files were not found: {', '.join(missing_files)}")
             continue
 
-        # Send filenames list to the client
-        conn.send(",".join(filenames_list).encode())
+        conn.send(",".join(filenames_list).encode())  # Send filenames
         print(f"Filenames sent to the client: {', '.join(filenames_list)}")
         break
 
-    # Step 2: Send each file
     for filename in filenames_list:
         try:
+            file_size = os.path.getsize(filename)
+            conn.send(struct.pack("!Q", file_size))  # Send file size as 8-byte big-endian unsigned integer
+
             with open(filename, "rb") as file:
                 print(f"Sending file: {filename}")
-                while (data := file.read(1024)):  # Read and send data in chunks
+                while (data := file.read(1024)):  # Send in chunks
                     conn.send(data)
             print(f"File '{filename}' sent successfully.")
         except Exception as e:

@@ -1,6 +1,8 @@
 import socket
 import argparse
 import os
+import struct
+from tqdm import tqdm  # Progress bar library
 
 def receive_file(host, port):
     s = socket.socket()
@@ -9,8 +11,7 @@ def receive_file(host, port):
         s.connect((host, port))
         print(f"Connected to the server at {host}:{port}.")
 
-        # Step 1: Receive filenames from the server
-        filenames = s.recv(1024).decode()  # Receive the filenames
+        filenames = s.recv(1024).decode()  # Receive filenames
         if not filenames:
             print("No filenames received.")
             return
@@ -18,41 +19,45 @@ def receive_file(host, port):
         filenames_list = filenames.split(",")
         print(f"Filenames received: {', '.join(filenames_list)}")
 
-        # Step 2: Receive each file one by one
         for filename in filenames_list:
             folder = "received"
-            os.makedirs(folder, exist_ok=True)  # Ensure the 'received' folder exists
+            os.makedirs(folder, exist_ok=True)
             filepath = os.path.join(folder, filename)
 
-            # Check if the file already exists
             if os.path.exists(filepath):
                 print(f"File '{filename}' already exists in the 'received' folder.")
                 while True:
                     choice = input("Do you want to overwrite (O), rename (R), or cancel (C)? ").strip().lower()
-                    if choice == 'o':  # Overwrite
-                        print(f"Overwriting the file '{filename}'.")
+                    if choice == 'o':
                         break
-                    elif choice == 'r':  # Rename
+                    elif choice == 'r':
                         new_name = input("Enter a new filename: ").strip()
                         filepath = os.path.join(folder, new_name)
-                        print(f"Saving as '{new_name}'.")
                         break
-                    elif choice == 'c':  # Cancel
+                    elif choice == 'c':
                         print("Operation canceled.")
-                        s.close()
                         return
                     else:
                         print("Invalid choice. Please enter 'O', 'R', or 'C'.")
-            
-            # Step 3: Receive and save the file
-            with open(filepath, "wb") as file:
-                while True:
-                    file_data = s.recv(1024)
-                    if not file_data:
-                        break
-                    file.write(file_data)
-            print(f"File received and saved as '{filepath}'.")
 
+            file_size_data = s.recv(8)  # Receive 8-byte file size
+            file_size = struct.unpack("!Q", file_size_data)[0]  # Unpack size
+
+            print(f"Receiving file '{filename}' of size {file_size} bytes.")
+            received_size = 0
+
+            with open(filepath, "wb") as file:
+                # Initialize tqdm progress bar
+                with tqdm(total=file_size, unit="B", unit_scale=True, desc=f"Downloading {filename}") as progress:
+                    while received_size < file_size:
+                        data = s.recv(min(1024, file_size - received_size))  # Receive in chunks
+                        if not data:
+                            break
+                        file.write(data)
+                        received_size += len(data)
+                        progress.update(len(data))  # Update progress bar
+
+            print(f"File received and saved as '{filepath}'.")
     except ConnectionError:
         print("Error: Unable to connect to the server.")
     finally:
