@@ -1,90 +1,67 @@
-import tkinter as tk
-from tkinter import filedialog, ttk
 import socket
+import argparse
 import os
 
-def connect_to_server():
-    host = host_entry.get()
-    port = int(port_entry.get())
+def receive_file(host, port):
+    s = socket.socket()
 
     try:
-        client_socket.connect((host, port))
-        status_text.set(f"Connected to server at {host}:{port}")
-        status_label.config(bg="green")  # Success background
-    except ConnectionError:
-        status_text.set("Error: Could not connect to server.")
-        status_label.config(bg="red")  # Error background
+        s.connect((host, port))
+        print(f"Connected to the server at {host}:{port}.")
 
-def receive_files():
-    try:
-        folder = filedialog.askdirectory(title="Select Folder to Save Files")
-        if not folder:
-            status_text.set("File download canceled.")
-            status_label.config(bg="#f4f4f4")  # Reset background
+        # Step 1: Receive filenames from the server
+        filenames = s.recv(1024).decode()  # Receive the filenames
+        if not filenames:
+            print("No filenames received.")
             return
+        
+        filenames_list = filenames.split(",")
+        print(f"Filenames received: {', '.join(filenames_list)}")
 
-        while True:
-            filename = client_socket.recv(1024).decode()
-            if not filename:
-                break
-            
-            file_path = os.path.join(folder, filename)
-            with open(file_path, "wb") as file:
+        # Step 2: Receive each file one by one
+        for filename in filenames_list:
+            folder = "received"
+            os.makedirs(folder, exist_ok=True)  # Ensure the 'received' folder exists
+            filepath = os.path.join(folder, filename)
+
+            # Check if the file already exists
+            if os.path.exists(filepath):
+                print(f"File '{filename}' already exists in the 'received' folder.")
                 while True:
-                    file_data = client_socket.recv(1024)
-                    if file_data == b"EOF":  # End of file marker
+                    choice = input("Do you want to overwrite (O), rename (R), or cancel (C)? ").strip().lower()
+                    if choice == 'o':  # Overwrite
+                        print(f"Overwriting the file '{filename}'.")
+                        break
+                    elif choice == 'r':  # Rename
+                        new_name = input("Enter a new filename: ").strip()
+                        filepath = os.path.join(folder, new_name)
+                        print(f"Saving as '{new_name}'.")
+                        break
+                    elif choice == 'c':  # Cancel
+                        print("Operation canceled.")
+                        s.close()
+                        return
+                    else:
+                        print("Invalid choice. Please enter 'O', 'R', or 'C'.")
+            
+            # Step 3: Receive and save the file
+            with open(filepath, "wb") as file:
+                while True:
+                    file_data = s.recv(1024)
+                    if not file_data:
                         break
                     file.write(file_data)
+            print(f"File received and saved as '{filepath}'.")
 
-            status_text.set(f"File received: {filename}")
-            status_label.config(bg="green")  # Success background
-    except Exception as e:
-        status_text.set(f"Error: {str(e)}")
-        status_label.config(bg="red")  # Error background
+    except ConnectionError:
+        print("Error: Unable to connect to the server.")
     finally:
-        client_socket.close()
+        s.close()
 
-# Tkinter GUI
-app = tk.Tk()
-app.title("File Transfer Client")
-app.geometry("500x400")
-app.resizable(False, False)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Receive files from the server.")
+    parser.add_argument("--host", type=str, required=True, help="Host address of the server.")
+    parser.add_argument("--port", type=int, default=9999, help="Port number to connect to (default: 9999).")
+    args = parser.parse_args()
 
-status_text = tk.StringVar()
-status_text.set("Status: Not connected")
-
-# Header Section
-header_frame = tk.Frame(app, bg="#fff")
-header_frame.pack(fill="x")
-tk.Label(header_frame, text="File Transfer Client", bg="#fff", fg="black", font=("Helvetica", 22, "bold")).pack(pady=7)
-
-# Connection Section
-connection_frame = tk.Frame(app)
-connection_frame.pack(pady=20)
-tk.Label(connection_frame, text="Server Host:").grid(row=0, column=0, pady=5, sticky="e")
-host_entry = ttk.Entry(connection_frame)
-host_entry.insert(0, "127.0.0.1")
-host_entry.grid(row=0, column=1, pady=5)
-
-tk.Label(connection_frame, text="Server Port:").grid(row=1, column=0, pady=5, sticky="e")
-port_entry = ttk.Entry(connection_frame)
-port_entry.insert(0, "9999")
-port_entry.grid(row=1, column=1, pady=5)
-
-connect_button = ttk.Button(connection_frame, text="Connect", command=connect_to_server)
-connect_button.grid(row=2, column=0, columnspan=2, pady=10)
-
-# Action Buttons
-action_frame = tk.Frame(app)
-action_frame.pack(pady=10)
-download_button = ttk.Button(action_frame, text="Download Files", command=receive_files)
-download_button.pack()
-
-# Status Section
-status_frame = tk.Frame(app, bg="#f4f4f4", relief="sunken", borderwidth=1)
-status_frame.pack(fill="x", padx=10, pady=10)
-status_label = tk.Label(status_frame, textvariable=status_text, bg="black", anchor="w")
-status_label.pack(fill="x", padx=5, pady=5)
-
-client_socket = socket.socket()
-app.mainloop()
+    receive_file(args.host, args.port)
