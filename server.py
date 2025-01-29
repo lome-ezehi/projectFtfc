@@ -29,10 +29,18 @@ def start_server(host, port):
     for filename in filenames_list:
         try:
             file_size = os.path.getsize(filename)
+            """
+            The file size is sent to the client to let it know how many bytes it should expect for this file.
+            struct.pack("!Q", file_size):
+                !: Network byte order (big-endian).
+                Q: An unsigned 8-byte integer (enough to store very large file sizes, up to ~18 exabytes).
+                This ensures the file size is sent as a fixed-length 8-byte number, regardless of the actual file size.
+            """
             conn.send(struct.pack("!Q", file_size))  # Send file size as 8-byte big-endian unsigned integer
 
             with open(filename, "rb") as file:
                 print(f"Sending file: {filename}")
+                #Walrus operator(:=) assigns and breaks out once empty
                 while (data := file.read(1024)):  # Send in chunks
                     conn.send(data)
             print(f"File '{filename}' sent successfully.")

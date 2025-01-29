@@ -85,3 +85,8 @@ print(newlist)
 
 # The Syntax
 # newlist = [expression for item in iterable if condition == True]
+
+# from tqdm import tqdm
+# for i in tqdm(range(10000)):
+#     pass
+
