@@ -40,7 +40,7 @@
 myTuple = ("John", "Peter", "Vicky")
 
 x = "#".join(myTuple)
-
+print(x)
 
 myDict = {"name": "John", "country": "Norway"}
 mySeparator = "TEST"
@@ -90,3 +90,15 @@ print(newlist)
 # for i in tqdm(range(10000)):
 #     pass
 
+import os
+
+UPLOAD_DIR = "uploads"
+files = os.listdir(UPLOAD_DIR)
+print(files)
+# output: ['testfile.html', 'assignment.png']
+
+
+if choice == "1":
+            s.send(b"LIST")
+            response = s.recv(4096).decode('utf-8')
+            print("\nFiles on the server:\n" + response)
