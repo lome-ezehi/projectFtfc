@@ -16,7 +16,11 @@ def handle_client(conn, addr):
         # TODO : List
         if command == "LIST":
             files = os.listdir(UPLOAD_DIR)
-            conn.send("\n".join(files).encode('utf-8'))
+            if files:
+                conn.send("\n".join(files).encode('utf-8'))
+            else:
+                conn.send("No files on the server.".encode('utf-8'))  
+
 
         # TODO : Download
         elif command.startswith("DOWNLOAD"):

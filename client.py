@@ -34,7 +34,10 @@ def connect_to_server():
         elif choice == "2":
             s.send(b"LIST")
             response = s.recv(4096).decode('utf-8')
-            if response:
+
+            if response.strip() == "No files on the server.":  # Check if the server has no files
+                print("\nNo files available on the server.")
+            else:
                 files = response.split("\n")
                 for i, file in enumerate(files, 1):
                     print(f"{i}. {file}")
@@ -59,8 +62,7 @@ def connect_to_server():
                         print("Error: File not found on the server.")
                 else:
                     print("Invalid selection.")
-            else:
-                print("No files available on the server.")
+
 
         # TODO : UPLOAD
         elif choice == "3":
