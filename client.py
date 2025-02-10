@@ -24,11 +24,13 @@ def connect_to_server():
         show_menu()
         choice = input("Enter your choice (1-5): ").strip()
 
+        # TODO : LIST
         if choice == "1":
             s.send(b"LIST")
             response = s.recv(4096).decode('utf-8')
             print("\nFiles on the server:\n" + response)
 
+        # TODO : DOWNLOAD
         elif choice == "2":
             s.send(b"LIST")
             response = s.recv(4096).decode('utf-8')
@@ -60,9 +62,11 @@ def connect_to_server():
             else:
                 print("No files available on the server.")
 
+        # TODO : UPLOAD
         elif choice == "3":
             directory = "./"
             files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+            
             if files:
                 for i, file in enumerate(files, 1):
                     print(f"{i}. {file}")
@@ -81,45 +85,43 @@ def connect_to_server():
                             while (data := file.read(1024)):
                                 s.send(data)
                         print(f"File '{filename}' uploaded successfully.")
+
                     elif response == "EXISTS":
-                        print("File already exists on the server. Choose a different name or overwrite.")
+                        print("File already exists on the server.")
                         while True:
-                            choice = input("Overwrite (O), Rename (R), Cancel (C): ").strip().lower()
+                            choice = input("Overwrite (O) or Cancel (C): ").strip().lower()
+                            
                             if choice == 'o':
                                 s.send(b"OVERWRITE")
-                                with open(file_path, "rb") as file:
-                                    while (data := file.read(1024)):
-                                        s.send(data)
-                                print(f"File '{filename}' overwritten successfully.")
-                                break
-                            elif choice == 'r':
-                                new_name = input("Enter new filename: ").strip()
-                                s.send(f"RENAME {new_name}".encode('utf-8'))
                                 response = s.recv(1024).decode('utf-8')
                                 if response == "READY":
                                     with open(file_path, "rb") as file:
                                         while (data := file.read(1024)):
                                             s.send(data)
-                                    print(f"File '{new_name}' uploaded successfully.")
-                                    break
-                                else:
-                                    print("Error renaming file.")
-                            elif choice == 'c':
-                                print("Upload canceled.")
-                                s.send(b"CANCEL")
+                                    print(f"File '{filename}' overwritten successfully.")
                                 break
+                            
+                            elif choice == 'c':
+                                s.send(b"CANCEL")
+                                response = s.recv(1024).decode('utf-8')
+                                if response == "CANCELLED":
+                                    print("Upload canceled.")
+                                    break
                             else:
-                                print("Invalid choice. Please enter 'O', 'R', or 'C'.")
+                                print("Invalid choice. Enter 'O' or 'C'.")
                     else:
                         print("Error: Server not ready to receive file.")
                 else:
                     print("Invalid selection.")
 
+
+        # TODO : HELP
         elif choice == "4":
             s.send(b"HELP")
             help_message = s.recv(1024).decode('utf-8')
             print(help_message)
 
+        # TODO : EXIT
         elif choice == "5":
             s.send(b"EXIT")
             print("Closing connection...")

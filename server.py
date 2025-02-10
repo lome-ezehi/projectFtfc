@@ -16,7 +16,7 @@ def handle_client(conn, addr):
         # TODO : List
         if command == "LIST":
             files = os.listdir(UPLOAD_DIR)
-            conn.send("\n".join(files).encode('utf-8') if files else b"No files available.")
+            conn.send("\n".join(files).encode('utf-8'))
 
         # TODO : Download
         elif command.startswith("DOWNLOAD"):
@@ -39,19 +39,26 @@ def handle_client(conn, addr):
             file_path = os.path.join(UPLOAD_DIR, filename)
 
             if os.path.exists(file_path):
-                conn.send(b"EXISTS")
+                conn.send(b"EXISTS")  # Notify client that the file exists
+                response = conn.recv(1024).decode('utf-8')
+                if response == "OVERWRITE":
+                    conn.send(b"READY")
+                else:
+                    conn.send(b"CANCELLED")
+                    return  # Exit upload if the client cancels
             else:
                 conn.send(b"READY")
-                with open(file_path, "wb") as file:
-                    while file_size > 0:
-                        data = conn.recv(min(1024, file_size))
-                        file.write(data)
-                        file_size -= len(data)
-                print(f"File '{filename}' uploaded from {addr}.")
+
+            with open(file_path, "wb") as file:
+                while file_size > 0:
+                    data = conn.recv(min(1024, file_size))
+                    file.write(data)
+                    file_size -= len(data)
+            print(f"File '{filename}' uploaded from {addr}.")
 
         # TODO : Help
         elif command == "HELP":
-            help_message = """\nCommands:\nLIST - View files\nDOWNLOAD <filename> - Get file\nUPLOAD <filename> - Send file\nEXIT - Disconnect"""
+            help_message = """\nCommands:\nLIST - View files\nDOWNLOAD - Download availaible files on server\nUPLOAD - Send files to the server\nEXIT - Disconnect"""
             conn.send(help_message.encode('utf-8'))
 
         # TODO : Exit
